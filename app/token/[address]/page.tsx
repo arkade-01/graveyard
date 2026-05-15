@@ -1,12 +1,20 @@
+import { Suspense } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { CauseBadge } from "@/app/components/CauseBadge";
 import { DeathScoreMeter } from "@/app/components/DeathScoreMeter";
-import { PriceChart, VolumeChart, DeathScoreBreakdown } from "@/app/components/AutopsyCharts";
+import {
+  PriceChart,
+  VolumeChart,
+  DeathScoreBreakdown,
+} from "@/app/components/AutopsyCharts";
 import { ShareButton } from "@/app/components/ShareButton";
 import { getAutopsyData } from "@/app/lib/autopsy";
 import type { AutopsyResponse } from "@/app/lib/autopsy";
+import type { OHLCVItem } from "@/packages/birdeye";
+
+// ── Formatters ────────────────────────────────────────────────────────────────
 
 function fmt(n: number) {
   if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(2)}M`;
@@ -29,92 +37,84 @@ function scoreFactors(
     {
       label: "Volume collapse",
       value:
-        overview.v24hUSD < 100
-          ? 30
-          : overview.v24hUSD < 500
-            ? 20
-            : overview.v24hUSD < 1000
-              ? 10
-              : 0,
+        overview.v24hUSD < 100 ? 30 : overview.v24hUSD < 500 ? 20 : overview.v24hUSD < 1000 ? 10 : 0,
       max: 30,
     },
     {
       label: "Liquidity drain",
       value:
-        overview.liquidity < 1000
-          ? 30
-          : overview.liquidity < 2000
-            ? 20
-            : overview.liquidity < 5000
-              ? 10
-              : 0,
+        overview.liquidity < 1000 ? 30 : overview.liquidity < 2000 ? 20 : overview.liquidity < 5000 ? 10 : 0,
       max: 30,
     },
     {
       label: "Price collapse",
       value:
-        death.percentLost >= 99
-          ? 25
-          : death.percentLost >= 95
-            ? 15
-            : death.percentLost >= 90
-              ? 10
-              : 0,
+        death.percentLost >= 99 ? 25 : death.percentLost >= 95 ? 15 : death.percentLost >= 90 ? 10 : 0,
       max: 25,
     },
     {
       label: "Holder exodus",
       value:
-        overview.holder < 10
-          ? 15
-          : overview.holder < 25
-            ? 10
-            : overview.holder < 50
-              ? 5
-              : 0,
+        overview.holder < 10 ? 15 : overview.holder < 25 ? 10 : overview.holder < 50 ? 5 : 0,
       max: 15,
     },
   ];
 }
 
-export default async function AutopsyPage({
-  params,
-}: {
-  params: Promise<{ address: string }>;
-}) {
-  const { address } = await params;
+// ── Loading skeleton ──────────────────────────────────────────────────────────
 
+function AutopsySkeleton() {
+  return (
+    <div className="space-y-8 animate-pulse">
+      <div className="flex items-center gap-4">
+        <div className="w-14 h-14 rounded-full bg-zinc-800" />
+        <div className="space-y-2">
+          <div className="h-8 w-32 bg-zinc-800 rounded" />
+          <div className="h-3 w-48 bg-zinc-800 rounded" />
+        </div>
+      </div>
+      <div className="h-24 rounded-xl bg-zinc-900 border border-zinc-800" />
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        {[1, 2, 3, 4].map((i) => (
+          <div key={i} className="h-20 rounded-xl bg-zinc-900 border border-zinc-800" />
+        ))}
+      </div>
+      <div className="h-52 rounded-xl bg-zinc-900 border border-zinc-800" />
+      <div className="h-36 rounded-xl bg-zinc-900 border border-zinc-800" />
+    </div>
+  );
+}
+
+// ── Autopsy content (async — streams in via Suspense) ─────────────────────────
+
+async function AutopsyContent({ address }: { address: string }) {
   let data: AutopsyResponse;
   try {
     data = await getAutopsyData(address);
   } catch {
     return (
-      <main className="min-h-screen flex items-center justify-center px-4">
-        <div className="text-center space-y-4">
-          <p className="font-gothic text-4xl text-zinc-600">Token not found</p>
-          <Link
-            href="/"
-            className="text-zinc-500 hover:text-zinc-300 underline text-sm"
-          >
-            ← Back to Graveyard
-          </Link>
-        </div>
-      </main>
+      <div className="text-center space-y-4 py-20">
+        <p className="font-gothic text-4xl text-zinc-600">Token not found</p>
+        <Link
+          href="/"
+          className="text-zinc-500 hover:text-zinc-300 underline text-sm"
+        >
+          ← Back to Graveyard
+        </Link>
+      </div>
     );
   }
 
   const { death, overview, ohlcv, symbol, name, logoURI } = data;
   const factors = scoreFactors(death, overview);
 
-  return (
-    <main className="min-h-screen px-4 py-10 max-w-4xl mx-auto space-y-8">
-      <Link
-        href="/"
-        className="inline-flex items-center gap-1.5 text-zinc-600 hover:text-zinc-300 text-sm transition-colors"
-      >
-        <ArrowLeft size={14} /> Back to Graveyard
-      </Link>
+  function peakBar(bars: OHLCVItem[]) {
+    return bars.reduce((m, c) => (c.h > m.h ? c : m), bars[0]);
+  }
 
+  return (
+    <div className="space-y-8">
+      {/* Header */}
       <div className="space-y-4">
         <div className="flex items-center gap-4">
           {logoURI && (
@@ -150,6 +150,7 @@ export default async function AutopsyPage({
         </p>
       </div>
 
+      {/* Death score */}
       <div className="rounded-xl border border-zinc-800 bg-zinc-900/40 p-5 space-y-3">
         <h2 className="text-xs text-zinc-500 uppercase tracking-widest">
           Overall Death Score
@@ -157,6 +158,7 @@ export default async function AutopsyPage({
         <DeathScoreMeter score={death.deathScore} />
       </div>
 
+      {/* Stat cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
           { label: "Peak Price", value: fmtPrice(death.peakPrice), color: "text-zinc-200" },
@@ -174,6 +176,7 @@ export default async function AutopsyPage({
         ))}
       </div>
 
+      {/* Timeline */}
       <div className="rounded-xl border border-zinc-800 bg-zinc-900/40 p-5 space-y-1">
         <h2 className="text-xs text-zinc-500 uppercase tracking-widest mb-3">
           Timeline
@@ -183,10 +186,7 @@ export default async function AutopsyPage({
           <span className="text-zinc-500">Peak price era:</span>
           <span className="font-mono text-zinc-300">
             {ohlcv.length > 0
-              ? new Date(
-                  ohlcv.reduce((m, c) => (c.h > m.h ? c : m), ohlcv[0])
-                    .unixTime * 1000
-                ).toLocaleDateString()
+              ? new Date(peakBar(ohlcv).unixTime * 1000).toLocaleDateString()
               : "Unknown"}
           </span>
         </div>
@@ -199,6 +199,7 @@ export default async function AutopsyPage({
         </div>
       </div>
 
+      {/* Charts */}
       <div className="rounded-xl border border-zinc-800 bg-zinc-900/40 p-5 space-y-3">
         <h2 className="text-xs text-zinc-500 uppercase tracking-widest">
           Price Collapse (30d)
@@ -213,6 +214,7 @@ export default async function AutopsyPage({
         <VolumeChart ohlcv={ohlcv} />
       </div>
 
+      {/* Live metrics */}
       <div className="rounded-xl border border-zinc-800 bg-zinc-900/40 p-5 space-y-3">
         <h2 className="text-xs text-zinc-500 uppercase tracking-widest mb-3">
           Live Metrics
@@ -239,12 +241,38 @@ export default async function AutopsyPage({
         </div>
       </div>
 
+      {/* Death score breakdown */}
       <div className="rounded-xl border border-zinc-800 bg-zinc-900/40 p-5 space-y-3">
         <h2 className="text-xs text-zinc-500 uppercase tracking-widest">
           Death Score Breakdown
         </h2>
         <DeathScoreBreakdown factors={factors} />
       </div>
+    </div>
+  );
+}
+
+// ── Page shell (sync — prerendered immediately) ────────────────────────────────
+
+export default function AutopsyPage({
+  params,
+}: {
+  params: Promise<{ address: string }>;
+}) {
+  // Unwrap address synchronously by passing the promise down.
+  // AutopsyContent awaits it inside the Suspense boundary.
+  return (
+    <main className="min-h-screen px-4 py-10 max-w-4xl mx-auto space-y-8">
+      <Link
+        href="/"
+        className="inline-flex items-center gap-1.5 text-zinc-600 hover:text-zinc-300 text-sm transition-colors"
+      >
+        <ArrowLeft size={14} /> Back to Graveyard
+      </Link>
+
+      <Suspense fallback={<AutopsySkeleton />}>
+        <AddressResolver params={params} />
+      </Suspense>
 
       <div className="pb-20 text-center">
         <Link
@@ -256,4 +284,14 @@ export default async function AutopsyPage({
       </div>
     </main>
   );
+}
+
+// Thin async wrapper that resolves params before rendering AutopsyContent.
+async function AddressResolver({
+  params,
+}: {
+  params: Promise<{ address: string }>;
+}) {
+  const { address } = await params;
+  return <AutopsyContent address={address} />;
 }

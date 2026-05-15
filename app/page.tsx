@@ -1,4 +1,6 @@
 import { Suspense } from "react";
+
+export const dynamic = "force-dynamic";
 import { getGraveyardData } from "./lib/graveyard";
 import { GraveyardClient } from "./components/GraveyardClient";
 import { TombstoneSkeleton } from "./components/TombstoneSkeleton";

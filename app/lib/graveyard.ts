@@ -1,4 +1,4 @@
-import { cacheLife } from "next/cache";
+import { unstable_cache } from "next/cache";
 import {
   getTrendingTokens,
   getTokenOverview,
@@ -72,10 +72,7 @@ async function enrichToken(address: string): Promise<GraveyardToken | null> {
   }
 }
 
-export async function getGraveyardData(): Promise<GraveyardResponse> {
-  "use cache";
-  cacheLife({ stale: 300, revalidate: 300, expire: 3600 });
-
+async function fetchGraveyardData(): Promise<GraveyardResponse> {
   let candidateAddresses: string[] = [];
   try {
     const trending = await getTrendingTokens();
@@ -115,3 +112,10 @@ export async function getGraveyardData(): Promise<GraveyardResponse> {
     cachedAt: Date.now(),
   };
 }
+
+// Cached wrapper — fills lazily on first request, never at build time.
+export const getGraveyardData = unstable_cache(
+  fetchGraveyardData,
+  ["graveyard-data"],
+  { revalidate: 300 }
+);
