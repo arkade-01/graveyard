@@ -10,7 +10,7 @@ GRAVEYARD is a real-time museum of dead Solana tokens — every tombstone is a t
 
 ## Screenshot
 
-![GRAVEYARD screenshot](./public/screenshot.png)
+![GRAVEYARD screenshot](./public/image.png)
 
 *(Replace with an actual screenshot)*
 
