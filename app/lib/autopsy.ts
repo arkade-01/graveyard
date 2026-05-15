@@ -24,12 +24,23 @@ const nowTs = () => Math.floor(Date.now() / 1000);
 const ago30d = () => nowTs() - 30 * 24 * 60 * 60;
 
 export async function getAutopsyData(address: string): Promise<AutopsyResponse> {
-  const [overview, holders, txs, ohlcv] = await Promise.all([
-    getTokenOverview(address),
+  // overview is required — if it fails we genuinely can't render anything.
+  const overview = await getTokenOverview(address);
+
+  // holders, txs, ohlcv are enrichment — degrade gracefully if they fail
+  // (rate limits, missing data) rather than killing the whole page.
+  const [holdersResult, txsResult, ohlcvResult] = await Promise.allSettled([
     getTopHolders(address),
     getRecentTxs(address),
     getOHLCV(address, ago30d(), nowTs()),
   ]);
+
+  const holders: HolderItem[] =
+    holdersResult.status === "fulfilled" ? holdersResult.value : [];
+  const txs: TxItem[] =
+    txsResult.status === "fulfilled" ? txsResult.value : [];
+  const ohlcv: OHLCVItem[] =
+    ohlcvResult.status === "fulfilled" ? ohlcvResult.value : [];
 
   const death = classifyDeath(overview, holders, txs, ohlcv);
 
