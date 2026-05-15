@@ -6,7 +6,7 @@ import { LayoutGrid, Table2 } from "lucide-react";
 import { TombstoneCard } from "./TombstoneCard";
 import { CauseBadge } from "./CauseBadge";
 import { DeathScoreMeter } from "./DeathScoreMeter";
-import type { GraveyardResponse } from "@/app/api/graveyard/route";
+import type { GraveyardResponse } from "@/app/lib/graveyard";
 
 function fmtUSD(n: number) {
   if (n >= 1_000_000_000) return `$${(n / 1_000_000_000).toFixed(2)}B`;

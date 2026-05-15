@@ -1,16 +1,7 @@
 import { Suspense } from "react";
+import { getGraveyardData } from "./lib/graveyard";
 import { GraveyardClient } from "./components/GraveyardClient";
 import { TombstoneSkeleton } from "./components/TombstoneSkeleton";
-import type { GraveyardResponse } from "./api/graveyard/route";
-
-async function getGraveyardData(): Promise<GraveyardResponse> {
-  const base =
-    process.env.NEXT_PUBLIC_BASE_URL ??
-    `http://localhost:${process.env.PORT ?? 3000}`;
-  const res = await fetch(`${base}/api/graveyard`, { cache: "no-store" });
-  if (!res.ok) throw new Error("Failed to load graveyard");
-  return res.json() as Promise<GraveyardResponse>;
-}
 
 function GraveyardSkeleton() {
   return (
@@ -30,7 +21,6 @@ async function GraveyardContent() {
 export default function HomePage() {
   return (
     <main className="min-h-screen px-4 py-12 max-w-7xl mx-auto space-y-10">
-      {/* Hero */}
       <header className="text-center space-y-4">
         <h1 className="font-gothic text-6xl sm:text-8xl text-white tracking-wider drop-shadow-[0_0_30px_rgba(255,255,255,0.1)]">
           ⚰️ GRAVEYARD
@@ -43,12 +33,10 @@ export default function HomePage() {
         </div>
       </header>
 
-      {/* Content */}
       <Suspense fallback={<GraveyardSkeleton />}>
         <GraveyardContent />
       </Suspense>
 
-      {/* Footer */}
       <footer className="text-center text-zinc-700 text-xs pb-20 space-y-1">
         <p>Powered by Birdeye API · Data refreshes every 5 minutes</p>
         <p>No tokens were harmed in the making of this site. They were already dead.</p>

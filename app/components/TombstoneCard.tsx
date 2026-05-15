@@ -2,7 +2,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { CauseBadge } from "./CauseBadge";
 import { DeathScoreMeter } from "./DeathScoreMeter";
-import type { GraveyardToken } from "@/app/api/graveyard/route";
+import type { GraveyardToken } from "@/app/lib/graveyard";
 
 function fmt(n: number) {
   if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(2)}M`;
